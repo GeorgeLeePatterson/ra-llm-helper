@@ -14,9 +14,11 @@
       "Bash(bun scripts/rust-lsp-daemon.js:*)",
       "Bash(bun scripts/lsp-client.js:*)",
       "Bash(bun:*)",
-      "Bash(./scripts/daemon-keeper.sh:*)",
-      "Bash(./scripts/lsp-init-workspace.sh:*)",
-      "Bash(./scripts/check-before-edit.sh:*)"
+      "Bash(./scripts/lsp-help.sh:*)",
+      "Bash(./scripts/lsp-session.sh:*)",
+      "Bash(./scripts/lsp-start.sh:*)",
+      "Bash(./scripts/lsp-client.sh:*)",
+      "Bash(./scripts/test-lsp-setup.sh:*)"
     ],
     "deny": [
       "Bash(cd:*)"
