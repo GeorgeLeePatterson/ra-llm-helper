@@ -8,9 +8,27 @@ import { existsSync } from 'fs';
 const SOCKET_PATH = `${homedir()}/.rust-lsp-daemon/daemon.sock`;
 
 // Find the project root for a given file path
-function findProjectRoot(filePath) {
+async function findProjectRoot(filePath) {
   // If it's already an absolute path, use it directly
   const absolutePath = filePath.startsWith('/') ? filePath : resolve(process.cwd(), filePath);
+  
+  // First, check if the daemon already knows about any projects
+  try {
+    const client = new LSPClient();
+    const status = await client.request('status');
+    
+    if (status && status.projects && status.projects.length > 0) {
+      // Check if the file is under any registered project
+      for (const project of status.projects) {
+        const projectPath = project.startsWith('/') ? project : resolve(process.cwd(), project);
+        if (absolutePath.startsWith(projectPath + '/')) {
+          return projectPath;
+        }
+      }
+    }
+  } catch (e) {
+    // Daemon might not be running, continue with fallback
+  }
   
   // Walk up the directory tree looking for Cargo.toml
   let currentDir = dirname(absolutePath);
@@ -113,7 +131,7 @@ async function main() {
         const [, file, pos] = args;
         const [line, col] = pos.split(':').map(Number);
         const hoverAbsolutePath = getAbsolutePath(file);
-        const hoverProjectPath = findProjectRoot(hoverAbsolutePath);
+        const hoverProjectPath = await findProjectRoot(hoverAbsolutePath);
         result = await client.request('lsp', {
           projectPath: hoverProjectPath,
           method: 'textDocument/hover',
@@ -128,7 +146,7 @@ async function main() {
         const [, defFile, defPos] = args;
         const [defLine, defCol] = defPos.split(':').map(Number);
         const defAbsolutePath = getAbsolutePath(defFile);
-        const defProjectPath = findProjectRoot(defAbsolutePath);
+        const defProjectPath = await findProjectRoot(defAbsolutePath);
         result = await client.request('lsp', {
           projectPath: defProjectPath,
           method: 'textDocument/definition',
@@ -141,11 +159,13 @@ async function main() {
         
       case 'symbols':
         const [, symbolFile] = args;
+        const symbolAbsolutePath = getAbsolutePath(symbolFile);
+        const symbolProjectPath = await findProjectRoot(symbolAbsolutePath);
         result = await client.request('lsp', {
-          projectPath: process.cwd(),
+          projectPath: symbolProjectPath,
           method: 'textDocument/documentSymbol',
           lspParams: {
-            textDocument: { uri: `file://${process.cwd()}/${symbolFile}` }
+            textDocument: { uri: `file://${symbolAbsolutePath}` }
           }
         });
         break;
@@ -171,7 +191,7 @@ async function main() {
         const [, macroFile, macroPos] = args;
         const [macroLine, macroCol] = macroPos.split(':').map(Number);
         const macroAbsolutePath = getAbsolutePath(macroFile);
-        const macroProjectPath = findProjectRoot(macroAbsolutePath);
+        const macroProjectPath = await findProjectRoot(macroAbsolutePath);
         result = await client.request('lsp', {
           projectPath: macroProjectPath,
           method: 'rust-analyzer/expandMacro',
@@ -185,7 +205,7 @@ async function main() {
       case 'syntax-tree':
         const [, treeFile] = args;
         const treeAbsolutePath = getAbsolutePath(treeFile);
-        const treeProjectPath = findProjectRoot(treeAbsolutePath);
+        const treeProjectPath = await findProjectRoot(treeAbsolutePath);
         result = await client.request('lsp', {
           projectPath: treeProjectPath,
           method: 'rust-analyzer/syntaxTree',
@@ -199,7 +219,7 @@ async function main() {
         const [, testFile, testPos] = args;
         const [testLine, testCol] = testPos.split(':').map(Number);
         const testAbsolutePath = getAbsolutePath(testFile);
-        const testProjectPath = findProjectRoot(testAbsolutePath);
+        const testProjectPath = await findProjectRoot(testAbsolutePath);
         result = await client.request('lsp', {
           projectPath: testProjectPath,
           method: 'rust-analyzer/relatedTests',
@@ -213,7 +233,7 @@ async function main() {
       case 'analyzer-status':
         const [, statusFile] = args;
         const statusAbsolutePath = statusFile ? getAbsolutePath(statusFile) : null;
-        const statusProjectPath = statusFile ? findProjectRoot(statusAbsolutePath) : process.cwd();
+        const statusProjectPath = statusFile ? await findProjectRoot(statusAbsolutePath) : process.cwd();
         result = await client.request('lsp', {
           projectPath: statusProjectPath,
           method: 'rust-analyzer/analyzerStatus',

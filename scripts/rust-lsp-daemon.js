@@ -533,7 +533,7 @@ async function main() {
     await client.connect();
     
     const subcommand = args[1];
-    const projectPath = '/Users/georgepatterson/projects/georgeleepatterson/clickhouse-datafusion';
+    const projectPath = args[2] || process.cwd();
     
     switch (subcommand) {
       case 'init':

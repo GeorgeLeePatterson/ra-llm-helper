@@ -1,14 +1,4 @@
 {
-  "hooks": {
-    "pre-command": [
-      {
-        "description": "Prevent directory changes to maintain ra-llm-helper context",
-        "pattern": "^\\s*cd\\s+",
-        "action": "block",
-        "message": "Directory changes are blocked to maintain the ra-llm-helper system context. Please use absolute paths instead."
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(cargo check:*)",
@@ -17,11 +7,19 @@
       "Bash(find:*)",
       "Bash(rg:*)",
       "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(realpath:*)",
+      "Bash(rustup:*)",
       "Bash(bun scripts/daemon-keeper.sh:*)",
       "Bash(bun scripts/rust-lsp-daemon.js:*)",
       "Bash(bun scripts/lsp-client.js:*)",
-      "Bash(bun:*)"
+      "Bash(bun:*)",
+      "Bash(./scripts/daemon-keeper.sh:*)",
+      "Bash(./scripts/lsp-init-workspace.sh:*)",
+      "Bash(./scripts/check-before-edit.sh:*)"
     ],
-    "deny": []
+    "deny": [
+      "Bash(cd:*)"
+    ]
   }
 }
