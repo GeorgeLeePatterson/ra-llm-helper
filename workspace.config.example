@@ -1,0 +1,26 @@
+# Workspace Configuration for ra-llm-helper
+# Copy this to workspace.config and customize for your project
+
+# Main project directory (where most work happens)
+# Use "." if you're already in the main project directory
+main_project: clickhouse-datafusion
+
+# Reference directories (read-only, for looking up types/implementations)
+# Paths are relative to where you run the LLM assistant
+reference_projects:
+  - ../datafusion
+  - ../datafusion-federation
+
+# Optional: Project-specific commands
+commands:
+  build: just build
+  test: just test
+  test_one: just test-one
+  lint: cargo clippy
+  format: cargo fmt
+
+# Optional: Important files to be aware of
+key_files:
+  - ${main_project}/REQUIRED_READING.md
+  - ${main_project}/Cargo.toml
+  - ${main_project}/src/lib.rs

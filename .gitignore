@@ -1,0 +1,27 @@
+# Ignore everything by default
+*
+
+# But allow these specific files and directories
+!.gitignore
+!README.md
+!CLAUDE.md
+!workspace.config.example
+
+# Allow scripts directory and all its contents
+!/scripts/
+!/scripts/**
+
+
+# LSP daemon artifacts
+.rust-lsp-daemon/
+*.sock
+
+# OS files
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
+# Don't commit project-specific notes that might be added
+CLAUDE_SESSION_NOTES.md
