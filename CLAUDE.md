@@ -25,6 +25,7 @@ The `workspace.config` file defines your project structure:
 1. **NO cd commands** - Everything works from workspace root
 2. **Always check types/errors before editing**
 3. **The daemon must be running for any Rust work**
+4. **NEVER use 'cd'. Always stay in root directory and run everything from root directory.**
 
 ## Common Commands
 
@@ -43,6 +44,12 @@ bun scripts/lsp-client.js def <project>/src/<file>.rs <line>:<col>
 
 # List symbols
 bun scripts/lsp-client.js symbols <project>/src/<file>.rs
+
+# Get diagnostics (errors/warnings)
+bun scripts/lsp-client.js diagnostics [<project>/src/<file>.rs]
+
+# Restart the LSP daemon
+bun scripts/lsp-client.js restart
 ```
 
 ## How It Works

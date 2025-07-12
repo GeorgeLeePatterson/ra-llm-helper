@@ -9,6 +9,7 @@ This toolkit gives Claude Code the same code intelligence that you have in your 
 - **Find all references** - See everywhere a symbol is used
 - **Hover for types** - Get type information at any position
 - **Symbol search** - Find types, functions, etc. across your workspace
+- **Diagnostics** - Get compilation errors and warnings
 - **Persistent indexing** - No re-indexing delay between queries
 
 ## Why This Matters
@@ -39,7 +40,7 @@ With this, Claude Code:
    cd /path/to/your/rust/project
    git clone https://github.com/GeorgeLeePatterson/ra-llm-helper .
    ```
-   
+
    Or if you want it in a subdirectory:
    ```bash
    git clone https://github.com/GeorgeLeePatterson/ra-llm-helper .claude-helpers
@@ -47,67 +48,23 @@ With this, Claude Code:
 
 2. That's it! Claude Code will automatically read `CLAUDE.md` and set itself up.
 
-## How It Works
+## New Features (2025-07-12)
 
-The system uses three components:
-
-1. **LSP Daemon** (`rust-lsp-daemon.js`) - Manages persistent rust-analyzer instances
-2. **Daemon Keeper** (`daemon-keeper.sh`) - Keeps the daemon alive during your session
-3. **LSP Client** (`lsp-client.js`) - Simple interface for queries
-
-```
-Your Terminal → Claude Code → Task Agent → Daemon Keeper → LSP Daemon → rust-analyzer
-                                  ↑                              ↓
-                                  └──────── Stays alive ─────────┘
-```
-
-## Usage
-
-When you start a new Claude Code session in a Rust project with ra-helper installed:
-
-1. Claude will automatically read `CLAUDE.md`
-2. Claude will check if the LSP daemon is running
-3. If not, Claude will start it using a Task agent
-4. You're ready to go!
-
-### Manual Commands (if needed)
-
-Check daemon status:
+### Diagnostics Support
+Get real-time compilation errors and warnings:
 ```bash
-bun scripts/lsp-client.js status
+# Get diagnostics for a specific file
+bun scripts/lsp-client.js diagnostics src/main.rs
+
+# Get all diagnostics across the project
+bun scripts/lsp-client.js diagnostics
 ```
 
-Find what defines a symbol:
+### Easy Restart
+Restart the LSP daemon without manual intervention:
 ```bash
-bun scripts/lsp-client.js def src/main.rs 10:15
+bun scripts/lsp-client.js restart
 ```
-
-Find all usages:
-```bash
-bun scripts/lsp-client.js lsp "textDocument/references" '{"textDocument":{"uri":"file:///full/path/to/file.rs"},"position":{"line":9,"character":14},"context":{"includeDeclaration":true}}'
-```
-
-## Architecture Notes
-
-- The daemon uses Unix domain sockets for communication
-- When the daemon keeper exits, the daemon automatically shuts down
-- No background processes are left running after your session
-- Each project gets its own rust-analyzer instance
-- Supports multiple projects in a workspace
-
-## Troubleshooting
-
-**"Daemon not running" errors:**
-- The Task agent running the keeper may have exited
-- Ask Claude to restart the daemon
-
-**"No references found" for symbols you know exist:**
-- rust-analyzer needs 10-30 seconds to fully index large projects
-- Document-level queries work immediately, workspace queries need full indexing
-
-**Performance issues:**
-- Each rust-analyzer instance uses ~200-500MB RAM
-- For very large workspaces, consider using for specific subdirectories
 
 ## Contributing
 

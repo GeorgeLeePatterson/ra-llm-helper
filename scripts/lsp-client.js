@@ -170,6 +170,22 @@ async function main() {
         });
         break;
         
+      case 'refs':
+        const [, refsFile, refsPos] = args;
+        const [refsLine, refsCol] = refsPos.split(':').map(Number);
+        const refsAbsolutePath = getAbsolutePath(refsFile);
+        const refsProjectPath = await findProjectRoot(refsAbsolutePath);
+        result = await client.request('lsp', {
+          projectPath: refsProjectPath,
+          method: 'textDocument/references',
+          lspParams: {
+            textDocument: { uri: `file://${refsAbsolutePath}` },
+            position: { line: refsLine - 1, character: refsCol - 1 },
+            context: { includeDeclaration: true }
+          }
+        });
+        break;
+        
       case 'refresh':
         const [, refreshFile] = args;
         result = await client.request('refresh', {
@@ -185,6 +201,30 @@ async function main() {
       case 'shutdown':
         result = await client.request('shutdown', {});
         break;
+        
+      case 'restart':
+        // First shutdown
+        try {
+          await client.request('shutdown', {});
+          console.log('Shutting down LSP daemon...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (e) {
+          // Daemon might already be down
+        }
+        
+        // Then restart using lsp-start.sh
+        const { exec } = await import('child_process');
+        await new Promise((resolve, reject) => {
+          exec('./scripts/lsp-start.sh', (error, stdout, stderr) => {
+            if (error) {
+              reject(error);
+            } else {
+              console.log(stdout);
+              resolve();
+            }
+          });
+        });
+        return;
         
       // Enhanced rust-analyzer commands
       case 'expand-macro':
@@ -251,16 +291,34 @@ async function main() {
         });
         break;
         
+      case 'diagnostics':
+        const [, diagFile] = args;
+        if (diagFile) {
+          const diagAbsolutePath = getAbsolutePath(diagFile);
+          const diagProjectPath = await findProjectRoot(diagAbsolutePath);
+          result = await client.request('diagnostics', {
+            projectPath: diagProjectPath,
+            filePath: diagFile
+          });
+        } else {
+          // Get all diagnostics
+          result = await client.request('diagnostics', {});
+        }
+        break;
+        
       default:
         console.log('Usage:');
         console.log('  Basic commands:');
         console.log('    init [project-path]         - Initialize LSP for project');
         console.log('    hover <file> <l>:<c>        - Get hover info');
         console.log('    def <file> <l>:<c>          - Go to definition');
+        console.log('    refs <file> <l>:<c>         - Find all references');
         console.log('    symbols <file>              - Get document symbols');
+        console.log('    diagnostics [file]          - Get diagnostics (errors/warnings)');
         console.log('    refresh <file>              - Refresh file in LSP');
         console.log('    status                      - Get daemon status');
         console.log('    shutdown                    - Shutdown daemon');
+        console.log('    restart                     - Restart the LSP daemon');
         console.log('');
         console.log('  Enhanced rust-analyzer commands:');
         console.log('    expand-macro <file> <l>:<c> - Expand macro at position');

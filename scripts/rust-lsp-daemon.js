@@ -28,6 +28,7 @@ class RustAnalyzerClient extends EventEmitter {
     this.fileVersions = new Map();
     this.indexingComplete = false;
     this.progressTokens = new Map();
+    this.diagnostics = new Map(); // uri -> diagnostics array
   }
 
   async start() {
@@ -133,6 +134,13 @@ class RustAnalyzerClient extends EventEmitter {
         const header = `Content-Length: ${Buffer.byteLength(responseMessage)}\r\n\r\n`;
         this.process.stdin.write(header + responseMessage);
       }
+    }
+    
+    // Store diagnostics notifications
+    if (message.method === 'textDocument/publishDiagnostics') {
+      const { uri, diagnostics } = message.params;
+      this.diagnostics.set(uri, diagnostics);
+      this.emit('diagnostics', message.params);
     }
   }
 
@@ -278,6 +286,20 @@ class RustAnalyzerClient extends EventEmitter {
     this.sendNotification('exit', null);
     this.process.kill();
   }
+  
+  getDiagnostics(uri) {
+    if (uri) {
+      return this.diagnostics.get(uri) || [];
+    }
+    // Return all diagnostics
+    const allDiagnostics = {};
+    for (const [fileUri, diags] of this.diagnostics) {
+      if (diags && diags.length > 0) {
+        allDiagnostics[fileUri] = diags;
+      }
+    }
+    return allDiagnostics;
+  }
 }
 
 // Daemon Server
@@ -374,6 +396,9 @@ class LSPDaemon {
       case 'refresh':
         return await this.refreshFile(params);
         
+      case 'diagnostics':
+        return await this.getDiagnostics(params);
+        
       case 'status':
         return this.getStatus();
         
@@ -432,6 +457,38 @@ class LSPDaemon {
       projects,
       connections: this.connections.size
     };
+  }
+  
+  async getDiagnostics(params) {
+    const { projectPath, filePath } = params;
+    
+    // If projectPath is specified, get diagnostics from that project
+    if (projectPath) {
+      const client = this.clients.get(projectPath);
+      if (!client) {
+        throw new Error(`No LSP client for project: ${projectPath}`);
+      }
+      
+      if (filePath) {
+        // Get diagnostics for specific file
+        const absolutePath = resolve(projectPath, filePath);
+        const uri = `file://${absolutePath}`;
+        return client.getDiagnostics(uri);
+      } else {
+        // Get all diagnostics for the project
+        return client.getDiagnostics();
+      }
+    }
+    
+    // Get diagnostics from all projects
+    const allDiagnostics = {};
+    for (const [path, client] of this.clients) {
+      const projectDiagnostics = client.getDiagnostics();
+      if (Object.keys(projectDiagnostics).length > 0) {
+        allDiagnostics[path] = projectDiagnostics;
+      }
+    }
+    return allDiagnostics;
   }
 
   async shutdown() {
