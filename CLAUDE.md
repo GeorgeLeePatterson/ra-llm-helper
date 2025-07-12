@@ -73,6 +73,26 @@ After reading workspace.config, I understand:
 3. **Keep daemon alive** - The Task agent must stay running
 4. **Respect project boundaries** - Only edit files in main_project, treat reference_projects as read-only
 
+## Preventing Directory Changes
+
+To prevent accidental `cd` commands, users can set up hooks in their Claude Code settings:
+
+```json
+{
+  "hooks": {
+    "pre-bash": "if echo \"$COMMAND\" | grep -q '^cd\\|^pushd'; then echo 'ERROR: Directory changes are not allowed. Use relative paths instead.' && exit 1; fi"
+  }
+}
+```
+
+This hook will:
+- Detect any `cd` or `pushd` commands
+- Show an error message
+- Prevent the command from executing
+
+For Task agents, remind them in the prompt:
+"You MUST stay in the current directory - do not use cd commands"
+
 ## What This Provides
 
 This repository contains helper scripts for enhanced Rust development with rust-analyzer LSP integration:
@@ -91,6 +111,12 @@ This repository contains helper scripts for enhanced Rust development with rust-
 **Find symbol definition:**
 ```bash
 bun scripts/lsp-client.js def <file> <line>:<col>
+```
+
+**Expand macros (derive, proc-macros, etc):**
+```bash
+bun scripts/lsp-client.js expand-macro <file> <line>:<col>
+# Note: Position cursor on the trait name in derive, e.g., for #[derive(Debug)], use column of 'D' in Debug
 ```
 
 **Find all references:**
@@ -143,6 +169,20 @@ Initialize each:
 ```
 
 Remember: The directory you start in is your workspace root. Never leave it!
+
+## Task Agent Best Practices
+
+When using the Task agent for LSP queries:
+
+1. **Always ask the Task agent to confirm location first**: "What directory are you in?"
+2. **Use the Task agent for information gathering**: 
+   - Finding symbols: "Find all references to X"
+   - Type information: "What type is at file.rs line 10 column 5?"
+   - Expanding macros: "Show me what the derive macro at file.rs:17:10 expands to"
+3. **Keep the Task agent alive**: It maintains the LSP daemon - if it exits, the daemon stops
+4. **Remind in each prompt**: "Stay in the current directory, use relative paths"
+
+The Task agent is your navigator, you are the editor!
 
 ---
 *Part of ra-llm-helper - Rust development enhancement for LLM code assistants*

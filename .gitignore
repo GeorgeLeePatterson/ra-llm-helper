@@ -11,6 +11,11 @@
 !/scripts/
 !/scripts/**
 
+# Allow .claude directory for shared configuration
+!/.claude/
+!/.claude/settings.json
+!/.claude/README.md
+
 
 # LSP daemon artifacts
 .rust-lsp-daemon/
@@ -22,6 +27,9 @@
 # Editor files
 .vscode/
 .idea/
+
+# Local Claude configuration (user-specific)
+.claude/settings.local.json
 
 # Don't commit project-specific notes that might be added
 CLAUDE_SESSION_NOTES.md
