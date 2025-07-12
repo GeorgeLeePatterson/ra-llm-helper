@@ -1,188 +1,104 @@
-# CLAUDE.md - Rust Development Helper
+# CLAUDE.md - Rust Development with LSP Task Agent
 
-## AUTO-STARTUP INSTRUCTIONS FOR CLAUDE
+## CRITICAL: START HERE - You CANNOT write Rust without LSP!
 
-I am Claude Code working on a Rust project with ra-llm-helper installed. I should immediately:
+### 1. IMMEDIATELY Start the LSP Task Agent:
 
-1. **Check current location and understand workspace structure:**
-```bash
-pwd && ls -la
-```
-
-2. **CRITICAL: Stay in the current directory!**
-- I must NOT use `cd` commands
-- All paths should be relative to where I start
-- The LSP daemon will be initialized for projects from this location
-
-3. **Check and parse workspace configuration:**
-```bash
-if [ -f workspace.config ]; then
-    echo "Found workspace.config:"
-    cat workspace.config
-    # Extract main project
-    MAIN_PROJECT=$(grep "^main_project:" workspace.config | sed 's/main_project: *//')
-    echo "Main project: $MAIN_PROJECT"
-else
-    echo "No workspace.config found, will use current directory"
-    MAIN_PROJECT="."
-fi
-```
-
-4. **Check if LSP daemon is running:**
-```bash
-bun scripts/lsp-client.js status 2>/dev/null || echo "Daemon not running"
-```
-
-5. **If daemon not running, start it:**
-Use Task tool with prompt: "You are an LSP daemon keeper. Run ./scripts/daemon-keeper.sh and stay alive to keep the daemon running. You MUST stay in the current directory - do not cd anywhere. When you exit, the daemon will shutdown. Report when ready."
-
-6. **Initialize projects based on configuration:**
-```bash
-# Initialize main project
-if [ -n "$MAIN_PROJECT" ]; then
-    echo "Initializing LSP for main project: $MAIN_PROJECT"
-    if [ "$MAIN_PROJECT" = "." ]; then
-        bun scripts/lsp-client.js init
-    else
-        bun scripts/lsp-client.js init "$MAIN_PROJECT"
-    fi
-fi
-
-# Initialize reference projects if configured
-if [ -f workspace.config ]; then
-    grep "^  - " workspace.config | while read -r line; do
-        REF_PROJECT=$(echo "$line" | sed 's/^  - //')
-        echo "Initializing LSP for reference project: $REF_PROJECT"
-        bun scripts/lsp-client.js init "$REF_PROJECT"
-    done
-fi
-```
-
-## Understanding the Workspace
-
-After reading workspace.config, I understand:
-- **Main project**: Where I'll be making changes (from `main_project` field)
-- **Reference projects**: Read-only projects for looking up types/APIs (from `reference_projects` list)
-- **Build commands**: Project-specific commands (from `commands` section)
-- **Key files**: Important documentation or entry points (from `key_files` list)
-
-## Critical Rules
-
-1. **NEVER change directories** - Always work from where you start
-2. **Use relative paths** - All file operations relative to starting directory
-3. **Keep daemon alive** - The Task agent must stay running
-4. **Respect project boundaries** - Only edit files in main_project, treat reference_projects as read-only
-
-## Preventing Directory Changes
-
-To prevent accidental `cd` commands, users can set up hooks in their Claude Code settings:
-
-```json
-{
-  "hooks": {
-    "pre-bash": "if echo \"$COMMAND\" | grep -q '^cd\\|^pushd'; then echo 'ERROR: Directory changes are not allowed. Use relative paths instead.' && exit 1; fi"
-  }
-}
-```
-
-This hook will:
-- Detect any `cd` or `pushd` commands
-- Show an error message
-- Prevent the command from executing
-
-For Task agents, remind them in the prompt:
-"You MUST stay in the current directory - do not use cd commands"
-
-## What This Provides
-
-This repository contains helper scripts for enhanced Rust development with rust-analyzer LSP integration:
-
-- **Full code intelligence**: Go to definition, find all references, hover for types
-- **Cross-file navigation**: Track how changes ripple through the codebase  
-- **Persistent indexing**: No startup delay for subsequent queries
-- **Multi-project support**: Can analyze main project + reference dependencies
-
-## Key Commands I Should Use
-
-**Working with files** (use paths relative to starting directory):
-- Main project file: `$MAIN_PROJECT/src/file.rs`
-- Reference project file: `../datafusion/src/file.rs`
-
-**Find symbol definition:**
-```bash
-bun scripts/lsp-client.js def <file> <line>:<col>
-```
-
-**Expand macros (derive, proc-macros, etc):**
-```bash
-bun scripts/lsp-client.js expand-macro <file> <line>:<col>
-# Note: Position cursor on the trait name in derive, e.g., for #[derive(Debug)], use column of 'D' in Debug
-```
-
-**Find all references:**
-```bash
-bun scripts/lsp-client.js lsp "textDocument/references" '{"textDocument":{"uri":"file://<absolute-path>"},"position":{"line":<line-1>,"character":<col-1>},"context":{"includeDeclaration":true}}'
-```
-
-**Search workspace symbols:**
-```bash
-bun scripts/lsp-client.js lsp "workspace/symbol" '{"query":"<SymbolName>"}'
-```
-
-**Get file symbols:**
-```bash
-bun scripts/lsp-client.js symbols <file>
-```
-
-## Working With Different Setups
-
-### Single Project (when started in project root):
-```
-.
-├── Cargo.toml
-├── src/
-└── scripts/     (from ra-llm-helper)
-```
-Initialize: `bun scripts/lsp-client.js init`
-
-### Multi-Project (when started in parent directory):
-```
-.
-├── main-project/
-│   └── Cargo.toml
-├── reference-project/
-│   └── Cargo.toml
-└── scripts/     (from ra-llm-helper)
-```
-Initialize each: 
-- `bun scripts/lsp-client.js init main-project`
-- `bun scripts/lsp-client.js init reference-project`
-
-## Architecture
+Use the Task tool with this EXACT prompt:
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│   Claude    │────▶│ Task Agent  │────▶│ LSP Daemon   │
-│ (stays in   │     │ (keeper)    │     │              │
-│ start dir)  │     │             │     │ rust-analyzer│
-└─────────────┘     └─────────────┘     └──────────────┘
+You are the LSP Task Agent for Rust development. Your role is to provide code intelligence using rust-analyzer.
+
+STARTUP SEQUENCE (run these commands in order):
+1. pwd
+2. bun scripts/rust-lsp-daemon.js daemon > daemon.log 2>&1 &
+3. sleep 3
+4. bun scripts/lsp-client.js status
+5. ./scripts/lsp-init-workspace.sh
+6. echo "LSP ready! I can now check types, find errors, expand macros, and navigate code."
+
+YOUR JOB:
+- You are Claude's eyes into the Rust codebase
+- Claude will ask you to check code BEFORE editing
+- You provide type info, error checks, and code navigation
+- NEVER use cd - stay in the current directory
+- Use relative paths from where you started
+
+COMMANDS YOU SHOULD KNOW:
+- Check for errors: bun scripts/lsp-client.js lsp "textDocument/publishDiagnostics" <params>
+- Get type info: bun scripts/lsp-client.js hover <file> <line>:<col>
+- Find definition: bun scripts/lsp-client.js def <file> <line>:<col>
+- Get symbols: bun scripts/lsp-client.js symbols <file>
+- Expand macro: bun scripts/lsp-client.js expand-macro <file> <line>:<col>
+- Find references: bun scripts/lsp-client.js lsp "textDocument/references" <params>
+- Search symbols: bun scripts/lsp-client.js lsp "workspace/symbol" '{"query":"<name>"}'
+
+When Claude asks about code, use these commands to provide accurate information.
 ```
 
-Remember: The directory you start in is your workspace root. Never leave it!
+### 2. Test the Task Agent Works:
 
-## Task Agent Best Practices
+Ask it: "What's the type of lineage_map in clickhouse-datafusion/src/column_lineage.rs at line 22?"
 
-When using the Task agent for LSP queries:
+Expected: It should use `bun scripts/lsp-client.js hover clickhouse-datafusion/src/column_lineage.rs 22:5`
 
-1. **Always ask the Task agent to confirm location first**: "What directory are you in?"
-2. **Use the Task agent for information gathering**: 
-   - Finding symbols: "Find all references to X"
-   - Type information: "What type is at file.rs line 10 column 5?"
-   - Expanding macros: "Show me what the derive macro at file.rs:17:10 expands to"
-3. **Keep the Task agent alive**: It maintains the LSP daemon - if it exits, the daemon stops
-4. **Remind in each prompt**: "Stay in the current directory, use relative paths"
+### 3. Before EVERY Rust Edit:
 
-The Task agent is your navigator, you are the editor!
+Ask the Task agent:
+- "Are there any errors in [file]?"
+- "What's the type at [file] [line]:[col]?"
+- "Show me all symbols in [file]"
 
----
-*Part of ra-llm-helper - Rust development enhancement for LLM code assistants*
+## Your Workspace Structure
+
+Read `workspace.config` to understand:
+- **main_project**: The ONLY directory where you edit files
+- **reference_projects**: Read-only directories for looking up implementations
+
+## Task Agent Communication Protocol
+
+When you need LSP information, ask the Task agent with specific requests:
+
+1. **For type information:**
+   "What's the type of [variable] at [file]:[line]:[col]?"
+
+2. **For error checking:**
+   "Check [file] for any compilation errors"
+
+3. **For navigation:**
+   "Where is [symbol] defined?" or "Find all references to [symbol]"
+
+4. **For macro expansion:**
+   "Show me what the derive macro at [file]:[line]:[col] expands to"
+
+5. **For symbols:**
+   "List all structs/functions in [file]"
+
+## Why This Matters
+
+Without the LSP Task agent:
+- ❌ You're coding blind - can't see types or errors
+- ❌ You'll make preventable mistakes
+- ❌ You'll waste time on compilation errors
+
+With the LSP Task agent:
+- ✅ See errors before you make edits
+- ✅ Know exact types and signatures
+- ✅ Navigate code intelligently
+- ✅ Understand macro expansions
+
+## Emergency Recovery
+
+If the Task agent dies or gets confused:
+1. Start a new Task agent with the startup prompt above
+2. Check daemon status: `bun scripts/lsp-client.js status`
+3. Re-initialize if needed: `./scripts/lsp-init-workspace.sh`
+
+## The Golden Rules
+
+1. **ALWAYS** have the Task agent running before editing Rust
+2. **ALWAYS** ask it to check code before making changes
+3. **NEVER** let the Task agent use `cd` commands
+4. **ONLY** edit files in the main_project directory
+
+Remember: The Task agent is your code intelligence system. Use it!
