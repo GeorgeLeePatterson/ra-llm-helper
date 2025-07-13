@@ -48,6 +48,13 @@ With this, Claude Code:
 
 2. That's it! Claude Code will automatically read `CLAUDE.md` and set itself up.
 
+## Configuration
+
+The `workspace.config` file defines your development environment:
+- **main_project**: The primary project being developed
+- **reference_projects**: Additional projects loaded for cross-references and type information
+- **LSP Auto-initialization**: All projects are automatically loaded when starting the LSP daemon
+
 ## New Features (2025-07-12)
 
 ### Diagnostics Support

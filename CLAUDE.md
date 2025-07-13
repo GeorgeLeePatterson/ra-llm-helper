@@ -55,8 +55,16 @@ bun scripts/lsp-client.js restart
 ## How It Works
 
 1. The daemon runs rust-analyzer for each project
-2. Projects are initialized with absolute paths
-3. The client finds the right project for any file
-4. All paths are relative to workspace root
+2. Projects are initialized with absolute paths from workspace.config
+3. Main project and reference projects are automatically loaded on startup
+4. The client finds the right project for any file
+5. All paths are relative to workspace root
+
+### Workspace Configuration
+
+The LSP startup script automatically reads `workspace.config` to:
+- Initialize the main project (specified by `main_project`)
+- Initialize all reference projects (listed under `reference_projects`)
+- This provides full cross-project navigation and type information
 
 Remember: **Always use the LSP before editing Rust code!**

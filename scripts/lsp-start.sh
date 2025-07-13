@@ -36,11 +36,34 @@ if [ -f workspace.config ]; then
         bun scripts/lsp-client.js init "$WORKSPACE_ROOT"
     fi
     
-    # Reference projects
-    grep "^  - " workspace.config 2>/dev/null | grep -v "^\s*#" | sed 's/^  - //' | while read -r ref_project; do
-        if [ -n "$ref_project" ] && [ -d "$ref_project" ]; then
-            echo "Initializing reference: $WORKSPACE_ROOT/$ref_project"
-            bun scripts/lsp-client.js init "$WORKSPACE_ROOT/$ref_project"
+    # Reference projects - only process lines between reference_projects: and the next section
+    awk '
+    /^reference_projects:/ { in_ref=1; next }
+    /^[a-zA-Z_]+:/ && in_ref { in_ref=0 }
+    /^#/ && in_ref { in_ref=0 }
+    /^$/ && in_ref { in_ref=0 }
+    in_ref && /^  - / { gsub(/^  - /, ""); print }
+    ' workspace.config 2>/dev/null | while read -r ref_project; do
+        if [ -n "$ref_project" ]; then
+            # Convert relative paths to absolute paths
+            if [[ "$ref_project" == /* ]]; then
+                # Already absolute path
+                REF_PATH="$ref_project"
+            else
+                # Relative path, resolve from workspace root
+                if [ -d "$WORKSPACE_ROOT/$ref_project" ]; then
+                    REF_PATH=$(cd "$WORKSPACE_ROOT/$ref_project" && pwd)
+                else
+                    REF_PATH=""
+                fi
+            fi
+            
+            if [ -n "$REF_PATH" ] && [ -d "$REF_PATH" ]; then
+                echo "Initializing reference: $REF_PATH"
+                bun scripts/lsp-client.js init "$REF_PATH"
+            else
+                echo "Warning: Reference project not found: $ref_project"
+            fi
         fi
     done
 else
